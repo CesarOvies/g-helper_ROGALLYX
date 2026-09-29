@@ -1,4 +1,4 @@
-﻿using GHelper.Ally;
+using GHelper.Ally;
 using GHelper.AnimeMatrix;
 using GHelper.AutoUpdate;
 using GHelper.Battery;
@@ -9,6 +9,7 @@ using GHelper.Helpers;
 using GHelper.Input;
 using GHelper.Mode;
 using GHelper.Peripherals;
+using GHelper.Peripherals.Dock;
 using GHelper.Peripherals.Headset;
 using GHelper.Peripherals.Keyboard;
 using GHelper.Peripherals.Mouse;
@@ -33,6 +34,7 @@ namespace GHelper
         AsusMouseSettings? mouseSettings;
         AsusKeyboardSettings? keyboardSettings;
         AsusHeadsetSettings? headsetSettings;
+        public AsusDockSettings? dockSettings;
 
         public AniMatrixControl matrixControl;
 
@@ -629,6 +631,10 @@ namespace GHelper
         {
             if (InvokeRequired) { Invoke(() => VisualiseBacklight(backlight)); return; }
             buttonBacklight.Text = Math.Round((double)backlight * 33.33).ToString() + "%";
+            if (dockSettings is not null && AppConfig.IsDockAuraSync())
+            {
+                dockSettings.Visualise();
+            }
         }
 
         public void VisualiseFPSLimit(int limit)
@@ -1296,6 +1302,7 @@ namespace GHelper
             buttonKeyboardColor.SwatchColor2 = Aura.HasSecondColor() ? Aura.Color2 : (Color?)null;
 
             if (panelRearLight.Visible) buttonRearColor.SwatchColor = Aura.RearColor;
+            if (dockSettings is not null && AppConfig.IsDockAuraSync()) dockSettings.Visualise();
 
             bool dynamic = AppConfig.IsDynamicLighting() && DynamicLightingHelper.IsEnabled() && !AppConfig.IsDynamicLightingOnly();
 
@@ -2087,6 +2094,7 @@ namespace GHelper
 
         public void VisualizePeripherals()
         {
+            if (InvokeRequired) { BeginInvoke(VisualizePeripherals); return; }
             if (!PeripheralsProvider.IsAnyPeripheralConnect())
             {
                 panelPeripherals.Visible = false;
@@ -2121,6 +2129,7 @@ namespace GHelper
                     PeripheralType.Mouse => Properties.Resources.icons8_maus_48,
                     PeripheralType.Keyboard => Properties.Resources.icons8_keyboard_48,
                     PeripheralType.Headset => Properties.Resources.icons8_headphones_48,
+                    PeripheralType.Dock => Properties.Resources.icons8_show_right_side_panel_48,
                     _ => null,
                 };
 
@@ -2200,6 +2209,12 @@ namespace GHelper
                 return;
             }
 
+            if (dockSettings is not null)
+            {
+                dockSettings.Close();
+                return;
+            }
+
             int index = 0;
             if (sender == buttonPeripheral2) index = 1;
             if (sender == buttonPeripheral3) index = 2;
@@ -2263,6 +2278,27 @@ namespace GHelper
                 else
                 {
                     headsetSettings = null;
+                }
+            }
+
+            if (iph.DeviceType() == PeripheralType.Dock)
+            {
+                AsusDock? dock = iph as AsusDock;
+                if (dock is null || !dock.IsDeviceReady)
+                {
+                    return;
+                }
+                dockSettings = new AsusDockSettings(dock);
+                dockSettings.TopMost = AppConfig.Is("topmost");
+                dockSettings.FormClosed += (s, e) => dockSettings = null;
+                dockSettings.Disposed += (s, e) => dockSettings = null;
+                if (!dockSettings.IsDisposed)
+                {
+                    dockSettings.Show();
+                }
+                else
+                {
+                    dockSettings = null;
                 }
             }
         }

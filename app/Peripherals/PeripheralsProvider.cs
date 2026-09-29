@@ -1,4 +1,5 @@
-﻿using GHelper.Peripherals.Headset;
+using GHelper.Peripherals.Dock;
+using GHelper.Peripherals.Headset;
 using GHelper.Peripherals.Headset.Models;
 using GHelper.Peripherals.Keyboard;
 using GHelper.Peripherals.Keyboard.Models;
@@ -19,6 +20,7 @@ namespace GHelper.Peripherals
         public static List<AsusMouse> ConnectedMice = new List<AsusMouse>();
         public static List<AsusKeyboard> ConnectedKeyboards = new List<AsusKeyboard>();
         public static List<AsusHeadset> ConnectedHeadsets = new List<AsusHeadset>();
+        public static List<AsusDock> ConnectedDocks = new List<AsusDock>();
 
         public static bool IsAuraSync { get; private set; } = AppConfig.IsAuraSync();
 
@@ -84,9 +86,17 @@ namespace GHelper.Peripherals
             }
         }
 
+        public static bool IsDockConnected()
+        {
+            lock (_LOCK)
+            {
+                return ConnectedDocks.Count > 0;
+            }
+        }
+
         public static bool IsAnyPeripheralConnect()
         {
-            return IsMouseConnected() || IsKeyboardConnected() || IsHeadsetConnected();
+            return IsMouseConnected() || IsKeyboardConnected() || IsHeadsetConnected() || IsDockConnected();
         }
 
         public static List<IPeripheral> AllPeripherals()
@@ -97,6 +107,7 @@ namespace GHelper.Peripherals
                 l.AddRange(ConnectedMice);
                 l.AddRange(ConnectedKeyboards);
                 l.AddRange(ConnectedHeadsets);
+                l.AddRange(ConnectedDocks);
             }
             return l;
         }
@@ -459,10 +470,18 @@ namespace GHelper.Peripherals
 
         private static void UpdateSettingsView()
         {
-            Program.settingsForm.Invoke(delegate
+            if (Program.settingsForm is null || !Program.settingsForm.IsHandleCreated) return;
+            if (Program.settingsForm.InvokeRequired)
+            {
+                Program.settingsForm.BeginInvoke(delegate
+                {
+                    Program.settingsForm.VisualizePeripherals();
+                });
+            }
+            else
             {
                 Program.settingsForm.VisualizePeripherals();
-            });
+            }
         }
 
         private static List<HidDevice> asusHidDevices = new();
@@ -816,6 +835,31 @@ namespace GHelper.Peripherals
             timer.Start();
         }
 
+        [MethodImpl(MethodImplOptions.Synchronized)]
+        public static void DetectAllAsusDocks()
+        {
+            bool hasDock = AsusHid.HasBulwark();
+            bool changed = false;
+            lock (_LOCK)
+            {
+                bool hadDock = ConnectedDocks.Count > 0;
+                if (hadDock != hasDock)
+                {
+                    ConnectedDocks.Clear();
+                    if (hasDock)
+                    {
+                        ConnectedDocks.Add(new AsusDock());
+                    }
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                UpdateSettingsView();
+            }
+        }
+
         private static void DeviceTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
             timer.Stop();
@@ -823,6 +867,7 @@ namespace GHelper.Peripherals
             DetectAllAsusMice();
             DetectAllAsusKeyboards();
             DetectAllAsusHeadsets();
+            DetectAllAsusDocks();
             if (AppConfig.IsDetachableKeyboard()) Program.inputDispatcher.Init();
             XGM.Init();
         }

@@ -1,11 +1,12 @@
-﻿
+
 namespace GHelper.Peripherals
 {
     public enum PeripheralType
     {
         Mouse,
         Keyboard,
-        Headset
+        Headset,
+        Dock
     }
 
     public interface IPeripheral

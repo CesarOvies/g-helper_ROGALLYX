@@ -384,6 +384,11 @@ public static class AppConfig
         return Is("headset_aura_sync");
     }
 
+    public static bool IsDockAuraSync()
+    {
+        return IsNotFalse("dock_aura_sync");
+    }
+
     public static bool NoMKeys()
     {
         return (ContainsModel("Z13") && !IsARCNM()) ||

@@ -426,6 +426,11 @@ namespace GHelper.USB
 
             DirectBrightness(brightness, log);
             if (AppConfig.IsAlly() || (brightness > 0 && Mode == AuraMode.GRADIENT)) ApplyAura();
+            else if (AppConfig.IsDockAuraSync())
+            {
+                int _speed = (Speed == AuraSpeed.Normal) ? 0xeb : (Speed == AuraSpeed.Fast) ? 0xf5 : 0xe1;
+                ApplyBulwark(Mode, Color1, Color2, _speed);
+            }
         }
 
         public static void DirectBrightness(int brightness, string log)
@@ -843,7 +848,7 @@ namespace GHelper.USB
             AsusHid.Write(new List<byte[]> { AuraMessage(RearMode, RearColor, RearColor, _speed), MESSAGE_SET, MESSAGE_APPLY }, "Rear", AsusHid.REAR_LIGHT_PIDS);
         }
 
-        public static byte[] BulwarkMessage(AuraMode mode, Color color, Color color2, int speed = 0xeb)
+        public static byte[] BulwarkMessage(AuraMode mode, Color color, Color color2, int speed = 0xeb, int? customBrightness = null)
         {
             byte[] msg = new byte[65];
             msg[0] = AsusHid.BULWARK_ID;
@@ -862,7 +867,7 @@ namespace GHelper.USB
             };
             msg[5] = bulwarkMode;
 
-            int bl = GetBrightness();
+            int bl = customBrightness ?? (AppConfig.IsDockAuraSync() ? GetBrightness() : AppConfig.Get("dock_brightness", GetBrightness()));
             byte brightness = (byte)(bl switch
             {
                 1 => 0x35,
@@ -871,7 +876,7 @@ namespace GHelper.USB
                 _ => 0x00
             });
 
-            if (!backlight || bl <= 0 || (color.R == 0 && color.G == 0 && color.B == 0))
+            if ((customBrightness == null && !backlight) || bl <= 0 || (bulwarkMode == 0x01 && color.R == 0 && color.G == 0 && color.B == 0))
                 brightness = 0x00;
 
             msg[6] = brightness;
@@ -893,12 +898,38 @@ namespace GHelper.USB
             return msg;
         }
 
-        public static void ApplyBulwark(AuraMode mode, Color color, Color color2, int speed = 0xeb)
+        public static Dictionary<AuraMode, string> GetBulwarkModes()
+        {
+            return new Dictionary<AuraMode, string>
+            {
+                { AuraMode.AuraRainbow, Properties.Strings.AuraRainbow },
+                { AuraMode.AuraStatic, Properties.Strings.AuraStatic },
+                { AuraMode.AuraBreathe, Properties.Strings.AuraBreathe },
+                { AuraMode.AuraStrobe, Properties.Strings.AuraStrobe },
+                { AuraMode.AuraColorCycle, Properties.Strings.AuraColorCycle },
+                { AuraMode.Star, "Star" },
+                { AuraMode.Rain, "Rain" }
+            };
+        }
+
+        public static Dictionary<int, string> GetBulwarkSpeeds()
+        {
+            return new Dictionary<int, string>
+            {
+                { 0xe1, Properties.Strings.AuraSlow },
+                { 0xeb, Properties.Strings.AuraNormal },
+                { 0xf5, Properties.Strings.AuraFast }
+            };
+        }
+
+        public static void ApplyBulwark(AuraMode mode, Color color, Color color2, int speed = 0xeb, int? customBrightness = null, bool force = false)
         {
             try
             {
+                if (!force && !AppConfig.IsDockAuraSync()) return;
                 if (!AsusHid.HasBulwark()) return;
-                AsusHid.WriteBulwark(new List<byte[]> { BulwarkMessage(mode, color, color2, speed), BULWARK_COMMIT });
+                int bl = customBrightness ?? (AppConfig.IsDockAuraSync() ? GetBrightness() : AppConfig.Get("dock_brightness", GetBrightness()));
+                AsusHid.WriteBulwark(new List<byte[]> { BulwarkMessage(mode, color, color2, speed, bl), BULWARK_COMMIT });
             }
             catch (Exception ex)
             {

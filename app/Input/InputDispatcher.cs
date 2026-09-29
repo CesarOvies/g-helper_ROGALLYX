@@ -1086,15 +1086,8 @@ namespace GHelper.Input
 
         public static int GetBacklight()
         {
-            int backlight_power = AppConfig.Get("keyboard_brightness", 1);
-            int backlight_battery = AppConfig.Get("keyboard_brightness_ac", 1);
             bool onBattery = SystemInformation.PowerStatus.PowerLineStatus != PowerLineStatus.Online;
-
-            int backlight;
-
-            //backlight = onBattery ? Math.Min(backlight_battery, backlight_power) : Math.Max(backlight_battery, backlight_power);
-            backlight = onBattery ? backlight_battery : backlight_power;
-
+            int backlight = AppConfig.Get(onBattery ? "keyboard_brightness" : "keyboard_brightness_ac", 1);
             return Math.Max(Math.Min(3, backlight), 0);
         }
 
@@ -1145,11 +1138,10 @@ namespace GHelper.Input
 
         public static void SetBacklight(int delta, bool force = false)
         {
-            int backlight_power = AppConfig.Get("keyboard_brightness", 1);
-            int backlight_battery = AppConfig.Get("keyboard_brightness_ac", 1);
             bool onBattery = SystemInformation.PowerStatus.PowerLineStatus != PowerLineStatus.Online;
+            string configKey = onBattery ? "keyboard_brightness" : "keyboard_brightness_ac";
 
-            int backlight = onBattery ? backlight_battery : backlight_power;
+            int backlight = AppConfig.Get(configKey, 1);
             int backlightMax = AppConfig.Get("max_brightness", 3);
 
             if (delta > backlightMax)
@@ -1157,10 +1149,7 @@ namespace GHelper.Input
             else
                 backlight = Math.Max(Math.Min(backlightMax, backlight + delta), 0);
 
-            if (onBattery)
-                AppConfig.Set("keyboard_brightness_ac", backlight);
-            else
-                AppConfig.Set("keyboard_brightness", backlight);
+            AppConfig.Set(configKey, backlight);
 
             var extraForm = Program.settingsForm.extraForm;
             if (extraForm != null && extraForm.Text != "") extraForm.VisualiseBacklight(backlight);

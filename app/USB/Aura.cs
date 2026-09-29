@@ -1,4 +1,4 @@
-﻿using GHelper.Gpu;
+using GHelper.Gpu;
 using GHelper.Helpers;
 using GHelper.Input;
 using GHelper.Peripherals;
@@ -81,6 +81,7 @@ namespace GHelper.USB
 
         static byte[] MESSAGE_APPLY = { AsusHid.AURA_ID, 0xb4 };
         static byte[] MESSAGE_SET = { AsusHid.AURA_ID, 0xb5, 0, 0, 0 };
+        static byte[] BULWARK_COMMIT = { AsusHid.BULWARK_ID, 0x52 };
 
         static readonly int AURA_ZONES = 8;
 
@@ -409,18 +410,22 @@ namespace GHelper.USB
             if (!AppConfig.IsSleepBacklight() || !AppConfig.Is("keyboard_sleep")) ApplyBrightness(0, "Sleep");
         }
 
+        private static int currentBrightness = -1;
+
+        public static int GetBrightness()
+        {
+            if (currentBrightness >= 0) return currentBrightness;
+            return InputDispatcher.GetBacklight();
+        }
+
         public static void ApplyBrightness(int brightness, string log = "Backlight")
         {
-            if (brightness == 0) backlight = false;
+            currentBrightness = brightness;
+            backlight = brightness > 0;
+            if (brightness > 0) initDirect = true;
 
             DirectBrightness(brightness, log);
             if (AppConfig.IsAlly()) ApplyAura();
-
-            if (brightness > 0)
-            {
-                if (!backlight) initDirect = true;
-                backlight = true;
-            }
         }
 
         public static void DirectBrightness(int brightness, string log)
@@ -648,6 +653,7 @@ namespace GHelper.USB
             {
                 PeripheralsProvider.StreamMouseColor(color.Length > 3 ? color[3] : color[0]);
                 PeripheralsProvider.StreamKeyboardColor(color.Length > 3 ? color[3] : color[0]);
+                ApplyBulwark(color.Length > 3 ? color[3] : color[0]);
             }
 
             if (!backlight) return;
@@ -766,6 +772,7 @@ namespace GHelper.USB
         {
             PeripheralsProvider.StreamMouseColor(color);
             PeripheralsProvider.StreamKeyboardColor(color);
+            ApplyBulwark(color);
 
             if (!backlight) return;
 
@@ -834,6 +841,74 @@ namespace GHelper.USB
 
             int _speed = (Speed == AuraSpeed.Normal) ? 0xeb : (Speed == AuraSpeed.Fast) ? 0xf5 : 0xe1;
             AsusHid.Write(new List<byte[]> { AuraMessage(RearMode, RearColor, RearColor, _speed), MESSAGE_SET, MESSAGE_APPLY }, "Rear", AsusHid.REAR_LIGHT_PIDS);
+        }
+
+        public static byte[] BulwarkMessage(AuraMode mode, Color color, Color color2, int speed = 0xeb)
+        {
+            byte[] msg = new byte[65];
+            msg[0] = AsusHid.BULWARK_ID;
+            msg[1] = 0x51;
+
+            byte bulwarkMode = mode switch
+            {
+                AuraMode.AuraStatic => 0x00,
+                AuraMode.AuraBreathe => 0x01,
+                AuraMode.AuraStrobe => 0x03,
+                AuraMode.AuraColorCycle => 0x04,
+                AuraMode.AuraRainbow => 0x05,
+                AuraMode.Star => 0x06,
+                AuraMode.Rain => 0x07,
+                _ => 0x00
+            };
+            msg[5] = bulwarkMode;
+
+            int bl = GetBrightness();
+            byte brightness = (byte)(bl switch
+            {
+                1 => 0x35,
+                2 => 0x4D,
+                3 => 0x64,
+                _ => 0x00
+            });
+
+            if (!backlight || bl <= 0 || (color.R == 0 && color.G == 0 && color.B == 0))
+                brightness = 0x00;
+
+            msg[6] = brightness;
+            msg[7] = color.R;
+            msg[8] = color.G;
+            msg[9] = color.B;
+
+            msg[13] = (byte)((speed <= 0xe1) ? 0x00 : (speed >= 0xf5) ? 0x02 : 0x01);
+
+            if (bulwarkMode == 0x05)
+                msg[16] = 0x01; // rainbow direction
+            else
+            {
+                msg[16] = color2.R;
+                msg[17] = color2.G;
+                msg[18] = color2.B;
+            }
+
+            return msg;
+        }
+
+        public static void ApplyBulwark(AuraMode mode, Color color, Color color2, int speed = 0xeb)
+        {
+            try
+            {
+                if (!AsusHid.HasBulwark()) return;
+                AsusHid.WriteBulwark(new List<byte[]> { BulwarkMessage(mode, color, color2, speed), BULWARK_COMMIT });
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteLine("Bulwark error: " + ex.Message);
+            }
+        }
+
+        public static void ApplyBulwark(Color color)
+        {
+            ApplyBulwark(AuraMode.AuraStatic, color, color);
         }
 
         public static void ApplyAura()
@@ -961,6 +1036,7 @@ namespace GHelper.USB
                 Program.acpi.TUFKeyboardRGB(Mode, Color1, _speed);
 
             ApplyRearLight();
+            ApplyBulwark(Mode, Color1, Color2, _speed);
 
         }
 
@@ -1158,6 +1234,7 @@ namespace GHelper.USB
 
                 PeripheralsProvider.StreamMouseColor(color);
                 PeripheralsProvider.StreamKeyboardColor(color);
+                ApplyBulwark(color);
                 if (isACPI) Program.acpi.TUFKeyboardRGB(AuraMode.AuraStatic, color, 0xeb, $"TUF RGB GPU {gpuMode}");
                 AsusHid.Write(new List<byte[]> { AuraMessage(AuraMode.AuraStatic, color, color, 0xeb), MESSAGE_APPLY, MESSAGE_SET });
 
@@ -1205,6 +1282,7 @@ namespace GHelper.USB
                 if (AppConfig.IsAlly()) color = ColorDim(color);
                 PeripheralsProvider.StreamMouseColor(color);
                 PeripheralsProvider.StreamKeyboardColor(color);
+                ApplyBulwark(color);
                 AsusHid.Write(new List<byte[]> { AuraMessage(AuraMode.AuraStatic, color, color, 0xeb), MESSAGE_APPLY, MESSAGE_SET });
                 if (isACPI) Program.acpi.TUFKeyboardRGB(AuraMode.AuraStatic, color, 0xeb);
             }

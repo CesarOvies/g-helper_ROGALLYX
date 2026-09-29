@@ -9,6 +9,7 @@ using GHelper.Helpers;
 using GHelper.Input;
 using GHelper.Mode;
 using GHelper.Peripherals;
+using GHelper.Peripherals.Headset;
 using GHelper.Peripherals.Keyboard;
 using GHelper.Peripherals.Mouse;
 using GHelper.Properties;
@@ -31,6 +32,7 @@ namespace GHelper
 
         AsusMouseSettings? mouseSettings;
         AsusKeyboardSettings? keyboardSettings;
+        AsusHeadsetSettings? headsetSettings;
 
         public AniMatrixControl matrixControl;
 
@@ -44,6 +46,7 @@ namespace GHelper
         public Extra? extraForm;
         public Updates? updatesForm;
         public Handheld? handheldForm;
+        public OverlayConfig? overlayForm;
 
         static long lastRefresh;
         static long lastBatteryRefresh;
@@ -56,7 +59,6 @@ namespace GHelper
         bool batteryFullMouseOver = false;
 
         bool sliderGammaIgnore = false;
-        bool activateCheck = false;
 
         public SettingsForm()
         {
@@ -132,7 +134,6 @@ namespace GHelper
 
             FormClosing += SettingsForm_FormClosing;
             Deactivate += SettingsForm_LostFocus;
-            Activated += SettingsForm_Focused;
 
             buttonSilent.BorderColor = colorEco;
             buttonBalanced.BorderColor = colorStandard;
@@ -270,7 +271,15 @@ namespace GHelper
 
             buttonFPS.Click += ButtonFPS_Click;
             buttonOverlay.Click += ButtonOverlay_Click;
-            buttonOverlay.BorderColor = colorStandard;
+            buttonOverlay.MouseUp += (s, e) => { if (e.Button == MouseButtons.Right) ToggleOverlay(); };
+            buttonOverlay.Text = Properties.Strings.Overlay;
+            buttonOverlayAlly.Click += ButtonOverlay_Click;
+            buttonOverlayAlly.BorderColor = colorStandard;
+            VisualiseOverlay();
+            buttonKeyboard.SizeChanged += (s, e) => AlignFnLock();
+            AlignFnLock();
+
+            if (AppConfig.IsAlly()) tableScreen.ColumnCount = 3;
 
             buttonAutoTDP.Click += ButtonAutoTDP_Click;
             buttonAutoTDP.BorderColor = colorTurbo;
@@ -299,15 +308,14 @@ namespace GHelper
 
         private void ButtonArmoury_Click(object? sender, EventArgs e)
         {
-            var dialogResult = MessageBox.Show(this, "Armoury Crate is active, download official uninstaller app?", "Armoury Crate", MessageBoxButtons.YesNo);
+            var dialogResult = ShowMessage("Armoury Crate is active, download official uninstaller app?", "Armoury Crate", MessageBoxButtons.YesNo);
             if (dialogResult == DialogResult.Yes) AsusService.RunArmouryUninstaller();
         }
 
 
         private void ButtonAmdOled_Click(object? sender, EventArgs e)
         {
-            AmdDisplay.RunAdrenaline();
-            activateCheck = true;
+            if (VisualControl.DisableOledPowerOptimization()) VisualiseAmdOled(false);
         }
 
         private void LabelBattery_Click(object? sender, EventArgs e)
@@ -537,7 +545,16 @@ namespace GHelper
 
         private void ButtonOverlay_Click(object? sender, EventArgs e)
         {
-            ToggleOverlay();
+            if (overlayForm == null || overlayForm.Text == "")
+            {
+                overlayForm = new OverlayConfig();
+                AddOwnedForm(overlayForm);
+            }
+
+            if (overlayForm.Visible)
+                overlayForm.Close();
+            else
+                overlayForm.Show();
         }
 
         private void ButtonHandheld_Click(object? sender, EventArgs e)
@@ -583,8 +600,8 @@ namespace GHelper
             panelKeyboardTitle.Visible = false;
             panelKeyboard.Padding = new Padding(panelKeyboard.Padding.Left, 0, panelKeyboard.Padding.Right, panelKeyboard.Padding.Bottom);
 
-            buttonOverlay.Text = Properties.Strings.Overlay;
-            buttonOverlay.Activated = AppConfig.IsOverlay();
+            buttonOverlayAlly.Text = Properties.Strings.Overlay;
+            buttonOverlayAlly.Activated = AppConfig.IsOverlay();
 
             tableAMD.Visible = true;
         }
@@ -626,14 +643,6 @@ namespace GHelper
             buttonAutoTDP.Activated = status;
         }
 
-        private void SettingsForm_Focused(object? sender, EventArgs e)
-        {
-            if (activateCheck)
-            {
-                buttonAmdOled.Visible = AmdDisplay.IsOledPowerOptimization();
-                activateCheck = false;
-            }
-        }
         private void SettingsForm_LostFocus(object? sender, EventArgs e)
         {
             lastLostFocus = DateTimeOffset.Now.ToUnixTimeMilliseconds();
@@ -680,16 +689,16 @@ namespace GHelper
             RefreshSensors(true);
         }
 
-        private void ShowBatteryWear()
+        private async void ShowBatteryWear()
         {
             //Refresh again only after 15 Minutes since the last refresh
             if (lastBatteryRefresh == 0 || Math.Abs(DateTimeOffset.Now.ToUnixTimeMilliseconds() - lastBatteryRefresh) > 15 * 60_000)
             {
                 lastBatteryRefresh = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-                HardwareControl.RefreshBatteryHealth();
+                await Task.Run(HardwareControl.RefreshBatteryHealth);
             }
 
-            if (HardwareControl.batteryHealth != -1)
+            if (batteryMouseOver && HardwareControl.batteryHealth != -1)
             {
                 labelCharge.Text = Properties.Strings.BatteryHealth + ": " + Math.Round(HardwareControl.batteryHealth, 1) + "%";
             }
@@ -1100,7 +1109,6 @@ namespace GHelper
         {
             if (InvokeRequired) { Invoke(() => VisualiseMatrixRunning(mode)); return; }
             comboMatrixRunning.SelectedIndex = mode;
-            if (comboMatrix.SelectedIndex == 0) comboMatrix.SelectedIndex = 3;
         }
 
         public void SetMatrixRunning(int mode)
@@ -1540,8 +1548,10 @@ namespace GHelper
             if (matrixForm != null && matrixForm.Text != "") matrixForm.Close();
             if (slashForm != null && slashForm.Text != "") slashForm.Close();
             if (handheldForm != null && handheldForm.Text != "") handheldForm.Close();
+            if (overlayForm != null && overlayForm.Text != "") overlayForm.Close();
             if (mouseSettings != null && mouseSettings.Text != "") mouseSettings.Close();
             if (keyboardSettings != null && keyboardSettings.Text != "") keyboardSettings.Close();
+            if (headsetSettings != null && headsetSettings.Text != "") headsetSettings.Close();
             MemoryHelper.TrimAfter();
         }
 
@@ -1553,6 +1563,17 @@ namespace GHelper
             this.Activate();
             this.TopMost = true;
             this.TopMost = AppConfig.Is("topmost");
+            if (TopMost) User32.SetWindowPos(Handle, -1, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);
+        }
+
+        public DialogResult ShowMessage(string text, string title = "", MessageBoxButtons buttons = MessageBoxButtons.OK)
+        {
+            DialogResult result = DialogResult.None;
+            Invoke((MethodInvoker)delegate
+            {
+                result = MessageBox.Show(this, text, title, buttons);
+            });
+            return result;
         }
 
         /// <summary>
@@ -1567,6 +1588,7 @@ namespace GHelper
                    (matrixForm != null && matrixForm.ContainsFocus) ||
                    (slashForm != null && slashForm.ContainsFocus) ||
                    (handheldForm != null && handheldForm.ContainsFocus) ||
+                   (overlayForm != null && overlayForm.ContainsFocus) ||
                    this.ContainsFocus ||
                    (lostFocusCheck && Math.Abs(DateTimeOffset.Now.ToUnixTimeMilliseconds() - lastLostFocus) < 300);
         }
@@ -1689,7 +1711,7 @@ namespace GHelper
             else
                 Program.hardwareOverlay?.StopOverlay();
 
-            buttonOverlay.Activated = enable;
+            VisualiseOverlay();
 
             if (fromHotkey && AppConfig.IsOverlayGameOnly())
                 Program.toast.RunToast(Properties.Strings.Overlay + " " + (enable ? Properties.Strings.On : Properties.Strings.Off));
@@ -1989,8 +2011,9 @@ namespace GHelper
 
         private void PictureGPU_Click(object? sender, EventArgs e)
         {
-            if (GPUModeControl.gpuError is not null)
-                Process.Start(new ProcessStartInfo("devmgmt.msc") { UseShellExecute = true });
+            if (GPUModeControl.gpuError is null) return;
+            GPUModeControl.CheckGpuError();
+            Process.Start(new ProcessStartInfo("devmgmt.msc") { UseShellExecute = true });
         }
 
         private void ButtonSilent_Click(object? sender, EventArgs e)
@@ -2056,6 +2079,12 @@ namespace GHelper
             labelKeyboard.Text = Properties.Strings.LaptopKeyboard + (PeripheralsProvider.IsAuraSync ? " +" : "");
         }
 
+        private static List<IPeripheral> VisiblePeripherals()
+        {
+            List<IPeripheral> lp = PeripheralsProvider.AllPeripherals();
+            return lp.Count > 3 ? lp.OrderByDescending(p => p.IsDeviceReady).ToList() : lp;
+        }
+
         public void VisualizePeripherals()
         {
             if (!PeripheralsProvider.IsAnyPeripheralConnect())
@@ -2066,8 +2095,7 @@ namespace GHelper
 
             Button[] buttons = new Button[] { buttonPeripheral1, buttonPeripheral2, buttonPeripheral3 };
 
-            //we only support 4 devces for now. Who has more than 4 mice connected to the same PC anyways....
-            List<IPeripheral> lp = PeripheralsProvider.AllPeripherals();
+            List<IPeripheral> lp = VisiblePeripherals();
 
             for (int i = 0; i < lp.Count && i < buttons.Length; ++i)
             {
@@ -2092,6 +2120,7 @@ namespace GHelper
                 {
                     PeripheralType.Mouse => Properties.Resources.icons8_maus_48,
                     PeripheralType.Keyboard => Properties.Resources.icons8_keyboard_48,
+                    PeripheralType.Headset => Properties.Resources.icons8_headphones_48,
                     _ => null,
                 };
 
@@ -2136,7 +2165,7 @@ namespace GHelper
             int index = 0;
             if (sender == buttonPeripheral2) index = 1;
             if (sender == buttonPeripheral3) index = 2;
-            IPeripheral iph = PeripheralsProvider.AllPeripherals().ElementAt(index);
+            IPeripheral iph = VisiblePeripherals().ElementAt(index);
 
 
             if (iph is null)
@@ -2165,11 +2194,17 @@ namespace GHelper
                 return;
             }
 
+            if (headsetSettings is not null)
+            {
+                headsetSettings.Close();
+                return;
+            }
+
             int index = 0;
             if (sender == buttonPeripheral2) index = 1;
             if (sender == buttonPeripheral3) index = 2;
 
-            IPeripheral iph = PeripheralsProvider.AllPeripherals().ElementAt(index);
+            IPeripheral iph = VisiblePeripherals().ElementAt(index);
 
             if (iph is null)
             {
@@ -2209,6 +2244,37 @@ namespace GHelper
                 }
                 ShowKeyboardSettings(kb);
             }
+
+            if (iph.DeviceType() == PeripheralType.Headset)
+            {
+                AsusHeadset? hs = iph as AsusHeadset;
+                if (hs is null || !hs.IsDeviceReady)
+                {
+                    return;
+                }
+                headsetSettings = new AsusHeadsetSettings(hs);
+                headsetSettings.TopMost = AppConfig.Is("topmost");
+                headsetSettings.FormClosed += HeadsetSettings_FormClosed;
+                headsetSettings.Disposed += HeadsetSettings_Disposed;
+                if (!headsetSettings.IsDisposed)
+                {
+                    headsetSettings.Show();
+                }
+                else
+                {
+                    headsetSettings = null;
+                }
+            }
+        }
+
+        private void HeadsetSettings_Disposed(object? sender, EventArgs e)
+        {
+            headsetSettings = null;
+        }
+
+        private void HeadsetSettings_FormClosed(object? sender, FormClosedEventArgs e)
+        {
+            headsetSettings = null;
         }
 
         private void ShowKeyboardSettings(AsusKeyboard kb)
@@ -2254,6 +2320,20 @@ namespace GHelper
             int filledSquares = (int)Math.Round(level/2);
             string squares = new string('|', filledSquares);
             labelMatrix.Text = $"Slash Lighting: {squares}";
+        }
+
+        private void AlignFnLock()
+        {
+            buttonFnLock.Width = buttonOverlay.Width = (buttonKeyboard.Width - 8) / 2;
+            buttonOverlay.Left = buttonFnLock.Left - 8 - buttonOverlay.Width;
+        }
+
+        public void VisualiseOverlay()
+        {
+            bool enabled = AppConfig.IsOverlay();
+            buttonOverlay.BackColor = enabled ? colorEco : buttonSecond;
+            buttonOverlay.ForeColor = enabled ? SystemColors.ControlLightLight : SystemColors.ControlDark;
+            buttonOverlayAlly.Activated = enabled;
         }
 
         public void VisualiseFnLock()

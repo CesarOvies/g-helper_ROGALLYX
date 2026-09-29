@@ -116,6 +116,16 @@ namespace GHelper.Display
                 if (ScreenCCD.IsHDR()) SetHDRControl(AppConfig.Get("hdr_control"));
                 else SetMiniled(AppConfig.Get("miniled"));
             }
+
+            InitELMB();
+        }
+
+        public static void InitELMB()
+        {
+            if (!AppConfig.IsELMB()) return;
+
+            int elmb = AppConfig.Get("elmb");
+            if (elmb >= 0 && !ScreenCCD.IsHDR()) ScreenELMB.Set(elmb);
         }
 
         public static void InitOptimalBrightness()
@@ -228,7 +238,7 @@ namespace GHelper.Display
             bool screenAuto = AppConfig.Is("screen_auto");
             bool overdriveSetting = Program.acpi.IsOverdriveSupported() && !AppConfig.IsNoOverdrive();
 
-            int overdrive = AppConfig.IsNoOverdrive() ? 0 : Program.acpi.DeviceGet(AsusACPI.ScreenOverdrive);
+            int overdrive = overdriveSetting ? Program.acpi.DeviceGet(AsusACPI.ScreenOverdrive) : 0;
 
             int miniled1 = Program.acpi.DeviceGet(AsusACPI.ScreenMiniled1);
             int miniled2 = Program.acpi.DeviceGet(AsusACPI.ScreenMiniled2);

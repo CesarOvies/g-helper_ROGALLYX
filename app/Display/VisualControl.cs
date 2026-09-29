@@ -30,6 +30,7 @@ namespace GHelper.Display
         DimmingVivo = 9,
         DimmingVisual = 19,
         DimmingDuo = 109,
+        DimmingVisualDuo = 319,
 
         GamutMode = 200,
         GamutModeDuo = 201,
@@ -43,6 +44,7 @@ namespace GHelper.Display
         Vivid = 13,
         Eyecare = 17,
         EReading = 212,
+        EReadingDuo = 213,
         EReadingVivo = 210,
         EReadingVivoDuo = 211,
         Disabled = 18,
@@ -85,6 +87,9 @@ namespace GHelper.Display
         {
             return File.Exists(AppConfig.IsVivoZenPro() ? GetVivobookPath() : GetGameVisualPath() + "\\Asus_Monochrome.icm");
         }
+
+        public static bool IsOledPowerOptimization() => AppConfig.IsOLED() && CpuInfo.IsAMD && HardwareControl.AmdApu().GetOledPowerOptimization();
+        public static bool DisableOledPowerOptimization() => HardwareControl.AmdApu().DisableOledPowerOptimization();
 
         public static Dictionary<SplendidGamut, string> GetGamutModes()
         {
@@ -273,11 +278,6 @@ namespace GHelper.Display
 
         public static void SetVisual(SplendidCommand mode = SplendidCommand.Default, int whiteBalance = DefaultColorTemp, bool init = false)
         {
-            Task.Run(() =>
-            {
-                if (AmdDisplay.IsOledPowerOptimization()) Program.settingsForm.VisualiseAmdOled(true);
-            });
-
             if (mode == SplendidCommand.None) return;
             if ((mode == SplendidCommand.Default || mode == SplendidCommand.VivoNormal) && whiteBalance == DefaultColorTemp && init) return; // Skip default setting on init
             if (mode == SplendidCommand.Disabled && !CpuInfo.IsAMD && init) return; // Skip disabled setting for Intel devices
@@ -379,12 +379,25 @@ namespace GHelper.Display
                 case SplendidCommand.VivoEycare:
                     return command + 100;
                 case SplendidCommand.DimmingVivo:
-                case SplendidCommand.DimmingVisual:
                     return SplendidCommand.DimmingDuo;
+                case SplendidCommand.DimmingVisual:
+                    return SplendidCommand.DimmingVisualDuo;
                 case SplendidCommand.GamutMode:
                     return SplendidCommand.GamutModeDuo;
                 case SplendidCommand.EReadingVivo:
                     return SplendidCommand.EReadingVivoDuo;
+                case SplendidCommand.EReading:
+                    return SplendidCommand.EReadingDuo;
+                case SplendidCommand.Default:
+                case SplendidCommand.Vivid:
+                case SplendidCommand.Eyecare:
+                case SplendidCommand.Disabled:
+                case SplendidCommand.Racing:
+                case SplendidCommand.Scenery:
+                case SplendidCommand.RTS:
+                case SplendidCommand.FPS:
+                case SplendidCommand.Cinema:
+                    return command + 300;
                 default:
                     return SplendidCommand.None;
             }
@@ -392,17 +405,17 @@ namespace GHelper.Display
 
         private static int RunSplendid(SplendidCommand command, int? param1 = null, int? param2 = null, int? param3 = null)
         {
-            string splendidPath = GetSplendidPath();
-            string splendidExe = $"{splendidPath}\\AsusSplendid.exe";
-            bool isVivo = AppConfig.IsVivoZenPro();
-            bool isSplenddid = File.Exists(splendidExe);
-
-            if (AmdDisplay.IsOledPowerOptimization())
+            if (IsOledPowerOptimization())
             {
                 Logger.WriteLine("Skipping command due to AMD OLED Power Optimization flag");
                 Program.settingsForm.VisualiseAmdOled(true);
                 return 0;
             }
+
+            string splendidPath = GetSplendidPath();
+            string splendidExe = $"{splendidPath}\\AsusSplendid.exe";
+            bool isVivo = AppConfig.IsVivoZenPro();
+            bool isSplenddid = File.Exists(splendidExe);
 
             if (ScreenNative.FindLaptopScreen() == null && ScreenNative.IsExternalDisplayConnected())
             {

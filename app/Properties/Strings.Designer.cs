@@ -113,7 +113,16 @@ namespace GHelper.Properties {
                 return ResourceManager.GetString("AlertDGPUTitle", resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   Looks up a localized string similar to Looks like external screen is connected to GPU, disable GPU anyway?.
+        /// </summary>
+        internal static string AlertExternalDisplay {
+            get {
+                return ResourceManager.GetString("AlertExternalDisplay", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to Switching off Ultimate Mode requires restart.
         /// </summary>
@@ -990,6 +999,15 @@ namespace GHelper.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Enhanced Vibration.
+        /// </summary>
+        internal static string EnhancedVibration {
+            get {
+                return ResourceManager.GetString("EnhancedVibration", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Export Profile.
         /// </summary>
         internal static string Export {
@@ -1013,6 +1031,15 @@ namespace GHelper.Properties {
         internal static string ExtraSettings {
             get {
                 return ResourceManager.GetString("ExtraSettings", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Extreme Low Motion Blur.
+        /// </summary>
+        internal static string ExtremeLowMotionBlur {
+            get {
+                return ResourceManager.GetString("ExtremeLowMotionBlur", resourceCulture);
             }
         }
         
@@ -1638,6 +1665,15 @@ namespace GHelper.Properties {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Rotate 180°.
+        /// </summary>
+        internal static string MatrixFlip {
+            get {
+                return ResourceManager.GetString("MatrixFlip", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Max refresh rate for lower latency.
         /// </summary>
         internal static string MaxRefreshTooltip {
@@ -1760,6 +1796,114 @@ namespace GHelper.Properties {
         internal static string MouseSynchronize {
             get {
                 return ResourceManager.GetString("MouseSynchronize", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Equalizer.
+        /// </summary>
+        internal static string HeadsetEqualizer {
+            get {
+                return ResourceManager.GetString("HeadsetEqualizer", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Noise Reduction.
+        /// </summary>
+        internal static string HeadsetMicrophoneType {
+            get {
+                return ResourceManager.GetString("HeadsetMicrophoneType", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Boom.
+        /// </summary>
+        internal static string HeadsetMicBoom {
+            get {
+                return ResourceManager.GetString("HeadsetMicBoom", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Inline.
+        /// </summary>
+        internal static string HeadsetMicInline {
+            get {
+                return ResourceManager.GetString("HeadsetMicInline", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to External.
+        /// </summary>
+        internal static string HeadsetMicExternal {
+            get {
+                return ResourceManager.GetString("HeadsetMicExternal", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Noise Reduction.
+        /// </summary>
+        internal static string HeadsetNoiseReduction {
+            get {
+                return ResourceManager.GetString("HeadsetNoiseReduction", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Sidetone.
+        /// </summary>
+        internal static string HeadsetSidetone {
+            get {
+                return ResourceManager.GetString("HeadsetSidetone", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Voice Prompt Language.
+        /// </summary>
+        internal static string HeadsetVoicePrompt {
+            get {
+                return ResourceManager.GetString("HeadsetVoicePrompt", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Adaptive ANC.
+        /// </summary>
+        internal static string HeadsetAdaptiveAnc {
+            get {
+                return ResourceManager.GetString("HeadsetAdaptiveAnc", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Ambient.
+        /// </summary>
+        internal static string HeadsetAmbient {
+            get {
+                return ResourceManager.GetString("HeadsetAmbient", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Prompt Sound.
+        /// </summary>
+        internal static string HeadsetPromptSound {
+            get {
+                return ResourceManager.GetString("HeadsetPromptSound", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Auto.
+        /// </summary>
+        internal static string Auto {
+            get {
+                return ResourceManager.GetString("Auto", resourceCulture);
             }
         }
 
@@ -2061,11 +2205,92 @@ namespace GHelper.Properties {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Chart.
+        /// </summary>
+        internal static string OverlayChart {
+            get {
+                return ResourceManager.GetString("OverlayChart", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Labels.
+        /// </summary>
+        internal static string OverlayLabels {
+            get {
+                return ResourceManager.GetString("OverlayLabels", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Load.
+        /// </summary>
+        internal static string OverlayLoad {
+            get {
+                return ResourceManager.GetString("OverlayLoad", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Complete.
+        /// </summary>
+        internal static string OverlayModeComplete {
+            get {
+                return ResourceManager.GetString("OverlayModeComplete", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Full.
+        /// </summary>
+        internal static string OverlayModeFull {
+            get {
+                return ResourceManager.GetString("OverlayModeFull", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Light.
+        /// </summary>
+        internal static string OverlayModeLight {
+            get {
+                return ResourceManager.GetString("OverlayModeLight", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Overlay only in games.
         /// </summary>
         internal static string OverlayOnlyInGames {
             get {
                 return ResourceManager.GetString("OverlayOnlyInGames", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Size.
+        /// </summary>
+        internal static string OverlaySize {
+            get {
+                return ResourceManager.GetString("OverlaySize", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Temperatures.
+        /// </summary>
+        internal static string OverlayTemperatures {
+            get {
+                return ResourceManager.GetString("OverlayTemperatures", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Transparency.
+        /// </summary>
+        internal static string OverlayTransparency {
+            get {
+                return ResourceManager.GetString("OverlayTransparency", resourceCulture);
             }
         }
 
@@ -2759,6 +2984,51 @@ namespace GHelper.Properties {
         internal static string Always {
             get {
                 return ResourceManager.GetString("Always", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Test Layout.
+        /// </summary>
+        internal static string TestLayout {
+            get {
+                return ResourceManager.GetString("TestLayout", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Fill All.
+        /// </summary>
+        internal static string FillAll {
+            get {
+                return ResourceManager.GetString("FillAll", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Keys.
+        /// </summary>
+        internal static string Keys {
+            get {
+                return ResourceManager.GetString("Keys", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Animation.
+        /// </summary>
+        internal static string Animation {
+            get {
+                return ResourceManager.GetString("Animation", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Back.
+        /// </summary>
+        internal static string Background {
+            get {
+                return ResourceManager.GetString("Background", resourceCulture);
             }
         }
     }

@@ -425,7 +425,7 @@ namespace GHelper.USB
             if (brightness > 0) initDirect = true;
 
             DirectBrightness(brightness, log);
-            if (AppConfig.IsAlly()) ApplyAura();
+            if (AppConfig.IsAlly() || (brightness > 0 && Mode == AuraMode.GRADIENT)) ApplyAura();
         }
 
         public static void DirectBrightness(int brightness, string log)
@@ -1028,6 +1028,7 @@ namespace GHelper.USB
 
             PeripheralsProvider.SyncMiceWithKeyboardAura();
             PeripheralsProvider.SyncKeyboardsWithAura();
+            PeripheralsProvider.SyncHeadsetsWithAura();
 
             AsusHid.Write(new List<byte[]> { AuraMessage(Mode, _Color1, _Color2, _speed), MESSAGE_SET, MESSAGE_APPLY }, "Aura", AsusHid.MAIN_AURA_PIDS);
             XGM.LightMode(Mode, _Color1, _Color2, _speed);

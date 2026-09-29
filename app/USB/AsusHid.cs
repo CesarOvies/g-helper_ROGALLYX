@@ -10,9 +10,12 @@ public static class AsusHid
     public const byte INPUT_ID = 0x5a;
     public const byte AURA_ID = 0x5d;
 
-    public static int[] MAIN_AURA_PIDS = { 0x1a30, 0x1854, 0x1869, 0x1866, 0x19b6, 0x1822, 0x1837, 0x1854, 0x184a, 0x183d, 0x8502, 0x1807, 0x17e0, 0x1abe, 0x1b4c, 0x1b6e, 0x1b2c, 0x8854, 0x1CE7, 0x1bf2, 0x1cd7, 0x1cd8, 0x1c7f };
+    public const byte BULWARK_ID = 0xec;
+
+    public static int[] MAIN_AURA_PIDS = { 0x1a30, 0x1854, 0x1869, 0x1866, 0x19b6, 0x1822, 0x1837, 0x1854, 0x184a, 0x183d, 0x8502, 0x1807, 0x17e0, 0x1abe, 0x1b4c, 0x1b6e, 0x1b2c, 0x8854, 0x1CE7, 0x1bf2, 0x1cd7, 0x1cd8 };
     public static int[] REAR_LIGHT_PIDS = { 0x18c6 };
-    public static int[] ALL_PIDS = MAIN_AURA_PIDS.Concat(REAR_LIGHT_PIDS).ToArray();
+    public static int[] BULWARK_PIDS = { 0x1c7f };
+    public static int[] ALL_PIDS = MAIN_AURA_PIDS.Concat(REAR_LIGHT_PIDS).Concat(BULWARK_PIDS).ToArray();
 
     public static readonly object hidLock = new();
 
@@ -52,7 +55,7 @@ public static class AsusHid
                 {
                     if ((pids != null ? pids.Contains(device.ProductID) : ALL_PIDS.Contains(device.ProductID)) &&
                         device.CanOpen &&
-                        device.GetMaxFeatureReportLength() > 0)
+                        (device.GetMaxFeatureReportLength() > 0 || device.GetMaxOutputReportLength() > 0))
                     {
                         filteredDevices.Add(device);
                     }
@@ -76,7 +79,9 @@ public static class AsusHid
             bool isValid = false;
             try
             {
-                isValid = device.GetReportDescriptor().TryGetReport(ReportType.Feature, reportId, out _);
+                var desc = device.GetReportDescriptor();
+                isValid = desc.TryGetReport(ReportType.Feature, reportId, out _) ||
+                          desc.TryGetReport(ReportType.Output, reportId, out _);
             }
             catch (Exception)
             {
@@ -180,7 +185,56 @@ public static class AsusHid
             }
             catch (Exception ex)
             {
-                if (log is not null) Logger.WriteLine($"Error opening {log} {device.ProductID.ToString("X")}: {ex.Message}");
+                if (log is not null) Logger.WriteLine($"Error opening {log} {device.ProductID:X4}: {ex.Message}");
+            }
+    }
+
+    public static bool HasBulwark()
+    {
+        try
+        {
+            return DeviceList.Local.GetHidDevices(ASUS_ID).Any(d => BULWARK_PIDS.Contains(d.ProductID));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+
+    public static void WriteBulwark(List<byte[]> dataList, string log = "Bulwark")
+    {
+        var devices = FindDevices(BULWARK_ID, BULWARK_PIDS);
+        if (devices is null) return;
+
+        lock (hidLock)
+        foreach (var device in devices)
+            try
+            {
+                using (var stream = device.Open())
+                {
+                    int outLen = device.GetMaxOutputReportLength();
+                    foreach (var data in dataList)
+                        try
+                        {
+                            byte[] packet = data;
+                            if (outLen > 0 && data.Length < outLen)
+                            {
+                                packet = new byte[outLen];
+                                Array.Copy(data, packet, data.Length);
+                            }
+                            stream.Write(packet);
+                            if (log is not null) Logger.WriteLine($"{log} {device.ProductID:X4}: {BitConverter.ToString(packet, 0, Math.Min(16, packet.Length))}");
+                        }
+                        catch (Exception ex)
+                        {
+                            if (log is not null) Logger.WriteLine($"Error writing {log} {device.ProductID:X4}: {ex.Message}");
+                        }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (log is not null) Logger.WriteLine($"Error opening {log} {device.ProductID:X4}: {ex.Message}");
             }
     }
 
@@ -212,44 +266,6 @@ public static class AsusHid
         }
     }
 
-    public static void DebugScanAllAsusDevices()
-    {
-        try
-        {
-            var devices = DeviceList.Local.GetHidDevices(ASUS_ID).Where(d => d.CanOpen).ToList();
-            Logger.WriteLine($"HID Scan: {devices.Count} openable ASUS device(s) (VID 0x{ASUS_ID:X4})");
-
-            foreach (var device in devices)
-            {
-                int featLen = -1, outLen = -1, inLen = -1;
-                bool hasAura = false, hasInput = false;
-                string err = "";
-
-                try { featLen = device.GetMaxFeatureReportLength(); } catch (Exception e) { err += $" feat={e.Message}"; }
-                try { outLen = device.GetMaxOutputReportLength(); } catch { }
-                try { inLen = device.GetMaxInputReportLength(); } catch { }
-
-                try
-                {
-                    var desc = device.GetReportDescriptor();
-                    hasAura = desc.TryGetReport(ReportType.Feature, AURA_ID, out _);
-                    hasInput = desc.TryGetReport(ReportType.Feature, INPUT_ID, out _);
-                }
-                catch (Exception e) { err += $" desc={e.Message}"; }
-
-                string tag;
-                if (MAIN_AURA_PIDS.Contains(device.ProductID)) tag = "[AURA ]";
-                else if (REAR_LIGHT_PIDS.Contains(device.ProductID)) tag = "[REAR ]";
-                else tag = "[?????]";
-
-                Logger.WriteLine($"HID Scan {tag} PID={device.ProductID:X4} feat={featLen} out={outLen} in={inLen} aura5D={hasAura} input5A={hasInput} path={device.DevicePath}{err}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.WriteLine($"HID Scan failed: {ex.Message}");
-        }
-    }
 
     public static byte[]? AuraProbe(bool query, string log = "Aura Probe")
     {
